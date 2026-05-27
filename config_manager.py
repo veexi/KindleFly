@@ -16,7 +16,11 @@ DEFAULT_CONFIG = {
     "allowed_extensions": [".epub", ".pdf", ".mobi", ".azw", ".azw3", ".txt", ".docx", ".doc"],
     "minimize_to_tray": True,
     "auto_start_service": False,
-    "service_active": False
+    "service_active": False,
+    "proxy_enabled": False,
+    "proxy_type": "SOCKS5",  # SOCKS5 or HTTP
+    "proxy_host": "127.0.0.1",
+    "proxy_port": 7890
 }
 
 class ConfigManager:

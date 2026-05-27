@@ -424,9 +424,50 @@ class KindleFlyApp(ctk.CTk):
         self.radio_ssl = ctk.CTkRadioButton(ssl_frame, text="SSL (端口465)", variable=self.ssl_var, value=True, command=self.on_smtp_protocol_change)
         self.radio_ssl.grid(row=0, column=1)
 
+        # --- Proxy Settings Box ---
+        proxy_frame = ctk.CTkFrame(view)
+        proxy_frame.grid(row=3, column=0, padx=10, pady=(15, 5), sticky="ew")
+        proxy_frame.grid_columnconfigure(1, weight=1)
+
+        # Title
+        proxy_title_lbl = ctk.CTkLabel(proxy_frame, text="🌐 网络代理配置 (可选，解决本地Gmail连接超时问题)", font=ctk.CTkFont(size=13, weight="bold"), text_color="#5DADE2")
+        proxy_title_lbl.grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(15, 10))
+
+        # Checkbox Enabled
+        self.proxy_enabled_var = ctk.BooleanVar(value=self.config_manager.get("proxy_enabled", False))
+        self.cb_proxy_enabled = ctk.CTkCheckBox(
+            proxy_frame, text="启用自定义代理服务 (支持 Clash 的 SOCKS5 或 HTTP 代理)", 
+            variable=self.proxy_enabled_var, command=self.toggle_proxy_fields
+        )
+        self.cb_proxy_enabled.grid(row=1, column=0, columnspan=2, sticky="w", padx=15, pady=(0, 10))
+
+        # Proxy Type
+        self.lbl_proxy_type = ctk.CTkLabel(proxy_frame, text="代理协议类型:")
+        self.lbl_proxy_type.grid(row=2, column=0, sticky="w", padx=15, pady=5)
+        self.menu_proxy_type = ctk.CTkOptionMenu(proxy_frame, values=["SOCKS5", "HTTP"], width=100)
+        self.menu_proxy_type.grid(row=2, column=1, sticky="w", padx=15, pady=5)
+        self.menu_proxy_type.set(self.config_manager.get("proxy_type", "SOCKS5"))
+
+        # Proxy Server Host
+        self.lbl_proxy_host = ctk.CTkLabel(proxy_frame, text="代理服务器地址:")
+        self.lbl_proxy_host.grid(row=3, column=0, sticky="w", padx=15, pady=5)
+        self.entry_proxy_host = ctk.CTkEntry(proxy_frame, placeholder_text="127.0.0.1")
+        self.entry_proxy_host.grid(row=3, column=1, sticky="ew", padx=15, pady=5)
+        self.entry_proxy_host.insert(0, self.config_manager.get("proxy_host", "127.0.0.1"))
+
+        # Proxy Server Port
+        self.lbl_proxy_port = ctk.CTkLabel(proxy_frame, text="代理端口:")
+        self.lbl_proxy_port.grid(row=4, column=0, sticky="w", padx=15, pady=(5, 15))
+        self.entry_proxy_port = ctk.CTkEntry(proxy_frame, placeholder_text="7890 (Clash 默认端口)")
+        self.entry_proxy_port.grid(row=4, column=1, sticky="ew", padx=15, pady=(5, 15))
+        self.entry_proxy_port.insert(0, str(self.config_manager.get("proxy_port", 7890)))
+
+        # Update initial states
+        self.toggle_proxy_fields()
+
         # --- Action Buttons ---
         btn_frame = ctk.CTkFrame(view, fg_color="transparent")
-        btn_frame.grid(row=3, column=0, padx=10, pady=15, sticky="ew")
+        btn_frame.grid(row=4, column=0, padx=10, pady=15, sticky="ew")
 
         btn_save = ctk.CTkButton(btn_frame, text="保存发信配置", width=140, command=self.save_smtp_config)
         btn_save.pack(side="left", padx=5)
@@ -445,6 +486,13 @@ class KindleFlyApp(ctk.CTk):
             self.entry_port.insert(0, "465")
         else:
             self.entry_port.insert(0, "587")
+
+    def toggle_proxy_fields(self):
+        enabled = self.proxy_enabled_var.get()
+        state = "normal" if enabled else "disabled"
+        self.menu_proxy_type.configure(state=state)
+        self.entry_proxy_host.configure(state=state)
+        self.entry_proxy_port.configure(state=state)
 
     def toggle_password_visibility(self):
         if self.entry_pwd.cget("show") == "*":
@@ -475,13 +523,31 @@ class KindleFlyApp(ctk.CTk):
             messagebox.showerror("配置错误", "SMTP 端口必须是数字！")
             return
 
+        # Fetch proxy configs
+        proxy_enabled = self.proxy_enabled_var.get()
+        proxy_type = self.menu_proxy_type.get()
+        proxy_host = self.entry_proxy_host.get().strip()
+        proxy_port_str = self.entry_proxy_port.get().strip()
+        
+        try:
+            proxy_port = int(proxy_port_str) if proxy_port_str else 7890
+        except ValueError:
+            messagebox.showerror("配置错误", "代理端口必须是数字！")
+            return
+
         self.config_manager.set("sender_email", email)
         self.config_manager.smtp_password = pwd
         self.config_manager.set("smtp_server", server)
         self.config_manager.set("smtp_port", port)
         self.config_manager.set("smtp_use_ssl", use_ssl)
 
-        messagebox.showinfo("成功", "Gmail 发信配置已安全保存！")
+        # Save proxy
+        self.config_manager.set("proxy_enabled", proxy_enabled)
+        self.config_manager.set("proxy_type", proxy_type)
+        self.config_manager.set("proxy_host", proxy_host)
+        self.config_manager.set("proxy_port", proxy_port)
+
+        messagebox.showinfo("成功", "发信与网络代理配置已安全保存！")
 
     def test_smtp_connection(self):
         """Runs the SMTP connection test in a separate thread so UI does not freeze."""
@@ -501,12 +567,25 @@ class KindleFlyApp(ctk.CTk):
             messagebox.showerror("错误", "端口必须是数字！")
             return
 
+        # Fetch proxy configs
+        proxy_enabled = self.proxy_enabled_var.get()
+        proxy_type = self.menu_proxy_type.get()
+        proxy_host = self.entry_proxy_host.get().strip()
+        proxy_port_str = self.entry_proxy_port.get().strip()
+        
+        try:
+            proxy_port = int(proxy_port_str) if proxy_port_str else 7890
+        except ValueError:
+            messagebox.showerror("错误", "代理端口必须是数字！")
+            return
+
         test_dialog = ctk.CTkInputDialog(text="请稍候，正在与谷歌邮件服务器通信...", title="测试 SMTP 连接")
         # Since ctk dialog is blocking, a thread is better.
         # We can just show a progress visual or disable button and re-enable.
         # Let's show a loading dialog: we will do this by spawning a thread and updating the user on success/fail.
         def thread_target():
-            sender = EmailSender(server, port, email, pwd, use_ssl)
+            sender = EmailSender(server, port, email, pwd, use_ssl,
+                                 proxy_enabled, proxy_type, proxy_host, proxy_port)
             success, msg = sender.test_connection()
             
             # Run UI modifications in main thread via after()

@@ -1,30 +1,92 @@
 import os
 import smtplib
+import socket
 import mimetypes
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email import encoders
 
+try:
+    import socks
+    HAS_SOCKS = True
+except ImportError:
+    HAS_SOCKS = False
+
+if HAS_SOCKS:
+    class SocksSMTP(smtplib.SMTP):
+        def __init__(self, host='', port=0, local_hostname=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None, proxy_type=None, proxy_addr=None, proxy_port=None):
+            self.proxy_type = proxy_type
+            self.proxy_addr = proxy_addr
+            self.proxy_port = proxy_port
+            super().__init__(host, port, local_hostname, timeout, source_address)
+
+        def _get_socket(self, host, port, timeout):
+            if self.proxy_type is not None and self.proxy_addr and self.proxy_port:
+                s = socks.socksocket()
+                s.set_proxy(self.proxy_type, self.proxy_addr, self.proxy_port)
+                s.settimeout(timeout)
+                s.connect((host, port))
+                return s
+            return super()._get_socket(host, port, timeout)
+
+    class SocksSMTP_SSL(smtplib.SMTP_SSL):
+        def __init__(self, host='', port=0, local_hostname=None, keyfile=None, certfile=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None, context=None, proxy_type=None, proxy_addr=None, proxy_port=None):
+            self.proxy_type = proxy_type
+            self.proxy_addr = proxy_addr
+            self.proxy_port = proxy_port
+            super().__init__(host, port, local_hostname, keyfile, certfile, timeout, source_address, context)
+
+        def _get_socket(self, host, port, timeout):
+            if self.proxy_type is not None and self.proxy_addr and self.proxy_port:
+                s = socks.socksocket()
+                s.set_proxy(self.proxy_type, self.proxy_addr, self.proxy_port)
+                s.settimeout(timeout)
+                s.connect((host, port))
+                # Wrap the socket with SSL
+                import ssl
+                if self.context is None:
+                    self.context = ssl.create_default_context()
+                return self.context.wrap_socket(s, server_hostname=host)
+            return super()._get_socket(host, port, timeout)
+
 class EmailSender:
-    def __init__(self, smtp_server, smtp_port, sender_email, smtp_password, use_ssl=False):
+    def __init__(self, smtp_server, smtp_port, sender_email, smtp_password, use_ssl=False,
+                 proxy_enabled=False, proxy_type="SOCKS5", proxy_host="127.0.0.1", proxy_port=7890):
         self.smtp_server = smtp_server
         self.smtp_port = int(smtp_port)
         self.sender_email = sender_email
         self.smtp_password = smtp_password
         self.use_ssl = use_ssl
+        self.proxy_enabled = proxy_enabled
+        self.proxy_type = proxy_type
+        self.proxy_host = proxy_host
+        self.proxy_port = int(proxy_port) if proxy_port else 7890
 
     def _connect(self, timeout=120):
         """Helper to establish SMTP connection and authenticate."""
         if not self.smtp_server or not self.sender_email or not self.smtp_password:
             raise ValueError("发件配置不完整，请检查邮件SMTP设置！")
 
+        proxy_t = None
+        if self.proxy_enabled and HAS_SOCKS:
+            proxy_t = socks.SOCKS5 if self.proxy_type == "SOCKS5" else socks.HTTP
+
         if self.use_ssl:
-            # SSL Connection (typically port 465)
-            server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=timeout)
+            if proxy_t:
+                server = SocksSMTP_SSL(self.smtp_server, self.smtp_port, timeout=timeout,
+                                       proxy_type=proxy_t, proxy_addr=self.proxy_host, proxy_port=self.proxy_port)
+            else:
+                # SSL Connection (typically port 465)
+                server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=timeout)
         else:
-            # TLS Connection (typically port 587)
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=timeout)
+            if proxy_t:
+                server = SocksSMTP(self.smtp_server, self.smtp_port, timeout=timeout,
+                                   proxy_type=proxy_t, proxy_addr=self.proxy_host, proxy_port=self.proxy_port)
+            else:
+                # TLS Connection (typically port 587)
+                server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=timeout)
+            
             server.ehlo()
             server.starttls()
             server.ehlo()

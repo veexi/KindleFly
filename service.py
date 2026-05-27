@@ -135,7 +135,11 @@ class KindleService:
                 smtp_port=self.config_manager.get("smtp_port", 587),
                 sender_email=self.config_manager.get("sender_email", ""),
                 smtp_password=self.config_manager.smtp_password,
-                use_ssl=self.config_manager.get("smtp_use_ssl", False)
+                use_ssl=self.config_manager.get("smtp_use_ssl", False),
+                proxy_enabled=self.config_manager.get("proxy_enabled", False),
+                proxy_type=self.config_manager.get("proxy_type", "SOCKS5"),
+                proxy_host=self.config_manager.get("proxy_host", "127.0.0.1"),
+                proxy_port=self.config_manager.get("proxy_port", 7890)
             )
         except Exception as e:
             self.log(f"⚠ 初始化发信服务失败: {e}", "error")

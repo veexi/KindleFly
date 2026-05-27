@@ -2,3 +2,4 @@ customtkinter>=5.2.2
 pystray>=0.19.5
 Pillow>=10.2.0
 pyinstaller>=6.3.0
+PySocks>=1.7.1
