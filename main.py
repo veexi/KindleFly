@@ -38,7 +38,7 @@ class KindleFlyApp(ctk.CTk):
         self.history_manager = HistoryManager(self.app_dir)
 
         # 2. Window Settings
-        self.title("KindleFly - 电子书自动推送服务")
+        self.title("KindleFly v1.0.1 - 电子书自动推送服务")
         self.geometry("980x640")
         self.minsize(900, 580)
         
