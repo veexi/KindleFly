@@ -746,12 +746,10 @@ class KindleFlyApp(ctk.CTk):
 
         messagebox.showinfo("成功", "推送与目录设置保存成功！")
         
-        # If service is currently running, log warning that interval/extensions might require restarting the service
+        # If service is currently running, wake it up to apply new settings immediately
         if self.service.is_running:
-            self.queue_log("⚙ 推送配置被更新，正在重新唤醒服务进程以应用新设置...", "info")
-            # Restart service automatically to reload configs safely
-            self.service.stop()
-            self.service.start()
+            self.queue_log("⚙ 推送配置被更新，已自动唤醒后台监控服务应用新配置...", "info")
+            self.service.scan_and_send_now()
 
     # ----------------------------------------------------
     # TAB 4: Sent History View Builder

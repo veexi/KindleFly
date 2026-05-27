@@ -20,6 +20,7 @@ class KindleService:
         
         self._thread = None
         self._stop_event = threading.Event()
+        self._sleep_event = threading.Event()
         self.is_running = False
         self.last_scan_time = None
         self.next_scan_time = None
@@ -34,12 +35,13 @@ class KindleService:
 
     def start(self):
         """Starts the background scanning service thread."""
-        if self.is_running:
+        if self.is_running or (self._thread and self._thread.is_alive()):
             self.log("服务已经在运行中。", "warning")
             return False
 
         self.config_manager.set("service_active", True)
         self._stop_event.clear()
+        self._sleep_event.clear()
         self.is_running = True
         
         if self.status_callback:
@@ -59,6 +61,7 @@ class KindleService:
         self.log("正在停止扫描服务...", "info")
         self.config_manager.set("service_active", False)
         self._stop_event.set()
+        self._sleep_event.set() # Wake up sleeping thread immediately to let it exit
         self.is_running = False
         self.next_scan_time = None
         
@@ -69,16 +72,15 @@ class KindleService:
         return True
 
     def scan_and_send_now(self):
-        """Runs a single scan and send cycle immediately in a separate short thread to keep GUI responsive."""
+        """Runs a single scan and send cycle immediately or wakes up the running thread."""
         if not self.is_running:
             self.log("⚙ 执行单次手动扫描...", "info")
+            self._stop_event.clear()
             scan_thread = threading.Thread(target=self._perform_scan, args=(True,), daemon=True)
             scan_thread.start()
         else:
-            self.log("服务正在运行中，无法进行手动单次扫描。您可以直接点击【立即扫描】以唤醒正在运行的守护进程。", "warning")
-            # Set event to wake up the main loop if sleeping
-            self._stop_event.set()
-            self._stop_event.clear()
+            self.log("⚙ 正在唤醒后台监控线程进行即时扫描...", "info")
+            self._sleep_event.set()
 
     def _service_loop(self):
         """Main service loop running inside background thread."""
@@ -89,13 +91,10 @@ class KindleService:
             interval_mins = max(1, int(self.config_manager.get("scan_interval_minutes", 10)))
             self.next_scan_time = datetime.now() + timedelta(minutes=interval_mins)
             
-            # Responsive sleep loop: checks stop event every 1 second
-            # so the thread can stop immediately instead of waiting for minutes
-            sleep_seconds = interval_mins * 60
-            for _ in range(sleep_seconds):
-                if self._stop_event.is_set():
-                    break
-                time.sleep(1)
+            self._sleep_event.clear()
+            
+            # Safe and responsive sleep utilizing threading.Event.wait()
+            self._sleep_event.wait(timeout=interval_mins * 60)
 
             # If stopped during sleep, don't scan
             if self._stop_event.is_set():
