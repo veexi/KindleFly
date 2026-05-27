@@ -158,14 +158,16 @@ class EmailSender:
             # Encode in base64
             encoders.encode_base64(attachment)
             
-            # Add header
-            # To handle non-ASCII filenames in email headers correctly:
-            # We encode the filename in UTF-8
+            # Add header in RFC 2047 format to satisfy Amazon's strict, ancient parser
+            from email.header import Header
+            encoded_filename = Header(file_name, 'utf-8').encode()
+            
             attachment.add_header(
                 'Content-Disposition',
                 'attachment',
-                filename=('utf-8', '', file_name)
+                filename=encoded_filename
             )
+            attachment.set_param('name', encoded_filename)
             msg.attach(attachment)
 
             # Connect and send (Using 180s timeout to allow large file transmission)
