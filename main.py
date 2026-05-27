@@ -318,7 +318,7 @@ class KindleFlyApp(ctk.CTk):
             self.stats_details.configure(text="无历史推送记录")
 
     # ----------------------------------------------------
-    # TAB 2: SMTP View Builder (Gmail Pre-configured)
+    # TAB 2: SMTP View Builder (Generic with Presets)
     # ----------------------------------------------------
     def create_smtp_view(self):
         view = ctk.CTkScrollableFrame(self.container, fg_color="transparent")
@@ -327,63 +327,63 @@ class KindleFlyApp(ctk.CTk):
         view.grid_columnconfigure(0, weight=1)
 
         # Header Title
-        header = ctk.CTkLabel(view, text="📧 Gmail 发信配置", font=ctk.CTkFont(size=22, weight="bold"))
+        header = ctk.CTkLabel(view, text="📧 邮件发信配置", font=ctk.CTkFont(size=22, weight="bold"))
         header.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 15))
 
-        # Gmail Instructions Guide Alert Box
+        # --- Interactive Instructions Guide Box ---
         guide_frame = ctk.CTkFrame(view, border_color="#5DADE2", border_width=1, fg_color="#1E2A38")
         guide_frame.grid(row=1, column=0, padx=10, pady=(0, 15), sticky="ew")
         guide_frame.grid_columnconfigure(0, weight=1)
 
-        guide_title = ctk.CTkLabel(
-            guide_frame, text="💡 谷歌邮箱 (Gmail) 安全配置重要指南", 
-            font=ctk.CTkFont(size=13, weight="bold"), text_color="#5DADE2"
+        # Interactive Segmented Tab Buttons
+        self.guide_selector = ctk.CTkSegmentedButton(
+            guide_frame, values=["Gmail 指南", "QQ 邮箱指南", "网易 163 指南"],
+            command=self.show_selected_guide, height=30
         )
-        guide_title.grid(row=0, column=0, sticky="w", padx=15, pady=(12, 4))
+        self.guide_selector.grid(row=0, column=0, padx=15, pady=(12, 8), sticky="ew")
 
-        instructions = (
-            "从 2022 年起，谷歌邮箱已彻底关闭【不够安全的应用】直连通道。\n"
-            "要让 KindleFly 能够通过您的 Gmail 自动推送书籍，您需要使用谷歌的【应用专用密码】(App Password)：\n\n"
-            "1. 登录您的 谷歌账号控制台 (myaccount.google.com)。\n"
-            "2. 点击左侧【安全性】(Security) -> 在【如何登录 Google】板块中开启【两步验证】(2-Step Verification)。\n"
-            "3. 开启后，在搜索框搜索【应用专用密码】(App Passwords) 并点击进入。\n"
-            "4. 输入一个应用别名（例如: KindleFly），点击【创建】。\n"
-            "5. 系统会生成一串 16 位的【应用专用密码】（黄框显示，不带空格）。\n"
-            "6. 复制该密码并填入下方的【Gmail 应用密码/授权码】框中！"
-        )
-        guide_text = ctk.CTkLabel(
-            guide_frame, text=instructions, font=ctk.CTkFont(size=12), 
+        # Dynamic Instruction Guide Text
+        self.guide_label = ctk.CTkLabel(
+            guide_frame, text="", font=ctk.CTkFont(size=12), 
             justify="left", text_color="#D5DBDB"
         )
-        guide_text.grid(row=1, column=0, sticky="w", padx=15, pady=(0, 12))
+        self.guide_label.grid(row=1, column=0, sticky="w", padx=15, pady=(0, 10))
 
-        # Tutorial Link Button
-        btn_tutorial = ctk.CTkButton(
-            guide_frame, text="🌐 点击跳转 谷歌账号安全管理 🔗", fg_color="transparent", 
+        # Dynamic Tutorial Link Button
+        self.btn_tutorial = ctk.CTkButton(
+            guide_frame, text="", fg_color="transparent", 
             border_width=1, border_color="#5DADE2", text_color="#5DADE2",
-            height=28, hover_color="#2C3E50", 
-            command=lambda: webbrowser.open("https://myaccount.google.com/security")
+            height=28, hover_color="#2C3E50", command=None
         )
-        btn_tutorial.grid(row=2, column=0, sticky="w", padx=15, pady=(0, 12))
+        self.btn_tutorial.grid(row=2, column=0, sticky="w", padx=15, pady=(0, 12))
 
         # --- Form Fields ---
         form_frame = ctk.CTkFrame(view)
         form_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         form_frame.grid_columnconfigure(1, weight=1)
 
-        # 1. Gmail Email
-        label_email = ctk.CTkLabel(form_frame, text="您的 Gmail 邮箱:")
-        label_email.grid(row=0, column=0, sticky="w", padx=15, pady=(15, 5))
-        self.entry_email = ctk.CTkEntry(form_frame, placeholder_text="example@gmail.com")
-        self.entry_email.grid(row=0, column=1, sticky="ew", padx=15, pady=(15, 5))
+        # Dropdown OptionMenu for Preset Selector
+        label_preset = ctk.CTkLabel(form_frame, text="常用邮箱服务商预设:")
+        label_preset.grid(row=0, column=0, sticky="w", padx=15, pady=(15, 5))
+        self.menu_preset = ctk.CTkOptionMenu(
+            form_frame, values=["Gmail", "QQ 邮箱", "网易 163 邮箱", "自定义 SMTP"],
+            command=self.on_email_preset_change
+        )
+        self.menu_preset.grid(row=0, column=1, sticky="w", padx=15, pady=(15, 5))
+
+        # 1. Email Address Entry
+        label_email = ctk.CTkLabel(form_frame, text="发信人电子邮箱:")
+        label_email.grid(row=1, column=0, sticky="w", padx=15, pady=5)
+        self.entry_email = ctk.CTkEntry(form_frame, placeholder_text="example@domain.com")
+        self.entry_email.grid(row=1, column=1, sticky="ew", padx=15, pady=5)
         self.entry_email.insert(0, self.config_manager.get("sender_email", ""))
 
-        # 2. Gmail App Password
-        label_pwd = ctk.CTkLabel(form_frame, text="Gmail 应用专用密码:")
-        label_pwd.grid(row=1, column=0, sticky="w", padx=15, pady=5)
+        # 2. Authorization Code / App Password Entry
+        label_pwd = ctk.CTkLabel(form_frame, text="邮箱授权码/应用密码:")
+        label_pwd.grid(row=2, column=0, sticky="w", padx=15, pady=5)
         
         pwd_input_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        pwd_input_frame.grid(row=1, column=1, sticky="ew", padx=15, pady=5)
+        pwd_input_frame.grid(row=2, column=1, sticky="ew", padx=15, pady=5)
         pwd_input_frame.grid_columnconfigure(0, weight=1)
 
         self.entry_pwd = ctk.CTkEntry(pwd_input_frame, show="*")
@@ -397,32 +397,51 @@ class KindleFlyApp(ctk.CTk):
         )
         self.btn_show_pwd.grid(row=0, column=1, padx=(5, 0))
 
-        # 3. SMTP Server (Locked or editable for advanced users)
-        label_server = ctk.CTkLabel(form_frame, text="SMTP 服务器:")
-        label_server.grid(row=2, column=0, sticky="w", padx=15, pady=5)
+        # 3. SMTP Server Address Entry
+        label_server = ctk.CTkLabel(form_frame, text="SMTP 服务器地址:")
+        label_server.grid(row=3, column=0, sticky="w", padx=15, pady=5)
         self.entry_server = ctk.CTkEntry(form_frame)
-        self.entry_server.grid(row=2, column=1, sticky="ew", padx=15, pady=5)
+        self.entry_server.grid(row=3, column=1, sticky="ew", padx=15, pady=5)
         self.entry_server.insert(0, self.config_manager.get("smtp_server", "smtp.gmail.com"))
 
-        # 4. SMTP Port
+        # 4. SMTP Port Entry
         label_port = ctk.CTkLabel(form_frame, text="SMTP 端口:")
-        label_port.grid(row=3, column=0, sticky="w", padx=15, pady=5)
+        label_port.grid(row=4, column=0, sticky="w", padx=15, pady=5)
         self.entry_port = ctk.CTkEntry(form_frame)
-        self.entry_port.grid(row=3, column=1, sticky="ew", padx=15, pady=5)
+        self.entry_port.grid(row=4, column=1, sticky="ew", padx=15, pady=5)
         self.entry_port.insert(0, str(self.config_manager.get("smtp_port", 587)))
 
-        # 5. SSL vs TLS Option
+        # 5. SSL vs TLS Radio Option
         label_ssl = ctk.CTkLabel(form_frame, text="连接加密协议:")
-        label_ssl.grid(row=4, column=0, sticky="w", padx=15, pady=(5, 15))
+        label_ssl.grid(row=5, column=0, sticky="w", padx=15, pady=(5, 15))
         
         ssl_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        ssl_frame.grid(row=4, column=1, sticky="w", padx=15, pady=(5, 15))
+        ssl_frame.grid(row=5, column=1, sticky="w", padx=15, pady=(5, 15))
         
         self.ssl_var = ctk.BooleanVar(value=self.config_manager.get("smtp_use_ssl", False))
         self.radio_tls = ctk.CTkRadioButton(ssl_frame, text="TLS (推荐，端口587)", variable=self.ssl_var, value=False, command=self.on_smtp_protocol_change)
         self.radio_tls.grid(row=0, column=0, padx=(0, 20))
         self.radio_ssl = ctk.CTkRadioButton(ssl_frame, text="SSL (端口465)", variable=self.ssl_var, value=True, command=self.on_smtp_protocol_change)
         self.radio_ssl.grid(row=0, column=1)
+
+        # Set default preset state and prefill guides
+        saved_server = self.config_manager.get("smtp_server", "smtp.gmail.com")
+        if "gmail.com" in saved_server.lower():
+            self.menu_preset.set("Gmail")
+            self.guide_selector.set("Gmail 指南")
+            self.show_selected_guide("Gmail 指南")
+        elif "qq.com" in saved_server.lower():
+            self.menu_preset.set("QQ 邮箱")
+            self.guide_selector.set("QQ 邮箱指南")
+            self.show_selected_guide("QQ 邮箱指南")
+        elif "163.com" in saved_server.lower():
+            self.menu_preset.set("网易 163 邮箱")
+            self.guide_selector.set("网易 163 指南")
+            self.show_selected_guide("网易 163 指南")
+        else:
+            self.menu_preset.set("自定义 SMTP")
+            self.guide_selector.set("Gmail 指南")
+            self.show_selected_guide("Gmail 指南")
 
         # --- Proxy Settings Box ---
         proxy_frame = ctk.CTkFrame(view)
@@ -472,11 +491,89 @@ class KindleFlyApp(ctk.CTk):
         btn_save = ctk.CTkButton(btn_frame, text="保存发信配置", width=140, command=self.save_smtp_config)
         btn_save.pack(side="left", padx=5)
 
-        btn_test = ctk.CTkButton(
+        self.btn_test = ctk.CTkButton(
             btn_frame, text="测试连接", fg_color="transparent", border_width=1, 
             width=120, command=self.test_smtp_connection
         )
-        btn_test.pack(side="left", padx=5)
+        self.btn_test.pack(side="left", padx=5)
+
+    def show_selected_guide(self, val):
+        """Switches the helper instruction guide dynamically."""
+        if val == "Gmail 指南":
+            instructions = (
+                "从 2022 年起，谷歌邮箱已彻底关闭【不够安全的应用】直连通道。\n"
+                "要让 KindleFly 能够通过您的 Gmail 自动推送书籍，您需要使用谷歌的【应用专用密码】(App Password)：\n\n"
+                "1. 登录您的 谷歌账号控制台 (myaccount.google.com)。\n"
+                "2. 点击左侧【安全性】(Security) -> 在【如何登录 Google】板块中开启【两步验证】(2-Step Verification)。\n"
+                "3. 开启后，在搜索框搜索【应用专用密码】(App Passwords) 并点击进入。\n"
+                "4. 输入一个应用别名（例如: KindleFly），点击【创建】。\n"
+                "5. 系统会生成一串 16 位的【应用专用密码】（黄框显示，不带空格）。\n"
+                "6. 复制该密码并填入下方的【邮箱授权码/应用密码】框中！"
+            )
+            link_text = "🌐 点击跳转 谷歌账号安全管理 🔗"
+            link_url = "https://myaccount.google.com/security"
+        elif val == "QQ 邮箱指南":
+            instructions = (
+                "要让 KindleFly 能够通过您的 QQ 邮箱自动推送书籍，您需要使用腾讯生成的【发信授权码】：\n\n"
+                "1. 在电脑浏览器登录网页版 QQ 邮箱 (mail.qq.com)。\n"
+                "2. 点击顶部【设置】->【账户】标签页 -> 往下滚动找到【POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务】板块。\n"
+                "3. 开启【POP3/SMTP服务】（如果已经是开启状态，点击下面的『生成授权码』链接）。\n"
+                "4. 按照页面上的指示，使用密保手机发送指定短信进行安全验证。\n"
+                "5. 验证成功后，网页会弹窗显示一串 16 位的【发信授权码】。\n"
+                "6. 复制该授权码填入下方的【邮箱授权码/应用密码】框中即可（千万别填QQ邮箱的登录密码）！"
+            )
+            link_text = "🌐 点击跳转 QQ 邮箱网页版 🔗"
+            link_url = "https://mail.qq.com"
+        elif val == "网易 163 指南":
+            instructions = (
+                "要让 KindleFly 能够通过您的网易 163 邮箱自动推送书籍，您需要使用网易生成的【发信授权密码】：\n\n"
+                "1. 在电脑浏览器登录网页版 网易 163 邮箱 (mail.163.com)。\n"
+                "2. 点击顶部菜单栏的【设置】->【POP3/SMTP/IMAP】服务设置。\n"
+                "3. 在 POP3/SMTP 服务栏目中，将状态设置为【开启】。\n"
+                "4. 按照页面提示进行扫码短信安全验证，设置您的【新增授权密码】。\n"
+                "5. 复制系统生成的授权密码填入下方的【邮箱授权码/应用密码】框中即可（千万别填邮箱的登录密码）！"
+            )
+            link_text = "🌐 点击跳转 网易 163 邮箱网页版 🔗"
+            link_url = "https://mail.163.com"
+        else:
+            return
+            
+        self.guide_label.configure(text=instructions)
+        # Update dynamic link button
+        self.btn_tutorial.configure(
+            text=link_text,
+            command=lambda: webbrowser.open(link_url)
+        )
+
+    def on_email_preset_change(self, choice):
+        """Automatically populates typical settings for chosen preset and switches guide."""
+        if choice == "Gmail":
+            self.entry_server.delete(0, "end")
+            self.entry_server.insert(0, "smtp.gmail.com")
+            self.entry_port.delete(0, "end")
+            self.entry_port.insert(0, "587")
+            self.ssl_var.set(False)
+            self.on_smtp_protocol_change()
+            self.guide_selector.set("Gmail 指南")
+            self.show_selected_guide("Gmail 指南")
+        elif choice == "QQ 邮箱":
+            self.entry_server.delete(0, "end")
+            self.entry_server.insert(0, "smtp.qq.com")
+            self.entry_port.delete(0, "end")
+            self.entry_port.insert(0, "465")
+            self.ssl_var.set(True)
+            self.on_smtp_protocol_change()
+            self.guide_selector.set("QQ 邮箱指南")
+            self.show_selected_guide("QQ 邮箱指南")
+        elif choice == "网易 163 邮箱":
+            self.entry_server.delete(0, "end")
+            self.entry_server.insert(0, "smtp.163.com")
+            self.entry_port.delete(0, "end")
+            self.entry_port.insert(0, "465")
+            self.ssl_var.set(True)
+            self.on_smtp_protocol_change()
+            self.guide_selector.set("网易 163 指南")
+            self.show_selected_guide("网易 163 指南")
 
     def on_smtp_protocol_change(self):
         """Automatically pre-fills ports depending on SSL/TLS selection."""
@@ -510,17 +607,17 @@ class KindleFlyApp(ctk.CTk):
         use_ssl = self.ssl_var.get()
 
         if not email or "@" not in email:
-            messagebox.showerror("配置错误", "请填写有效的 Gmail 发信邮箱！")
+            messagebox.showerror("配置错误", "请填写有效的发信电子邮箱！")
             return
 
         if not pwd:
-            messagebox.showerror("配置错误", "请填写 Gmail 应用密码！")
+            messagebox.showerror("配置错误", "请填写邮箱授权码/应用密码！")
             return
 
         try:
             port = int(port_str)
         except ValueError:
-            messagebox.showerror("配置错误", "SMTP 端口必须是数字！")
+            messagebox.showerror("配置错误", "SMTP 端口必须为数字！")
             return
 
         # Fetch proxy configs
@@ -532,7 +629,7 @@ class KindleFlyApp(ctk.CTk):
         try:
             proxy_port = int(proxy_port_str) if proxy_port_str else 7890
         except ValueError:
-            messagebox.showerror("配置错误", "代理端口必须是数字！")
+            messagebox.showerror("配置错误", "代理端口必须为数字！")
             return
 
         self.config_manager.set("sender_email", email)
@@ -558,13 +655,13 @@ class KindleFlyApp(ctk.CTk):
         use_ssl = self.ssl_var.get()
 
         if not email or not pwd or not server or not port_str:
-            messagebox.showerror("配置不完整", "请确保已填写 邮箱、应用密码、服务器和端口！")
+            messagebox.showerror("配置不完整", "请确保已填写 发信人邮箱、授权码、服务器和端口！")
             return
 
         try:
             port = int(port_str)
         except ValueError:
-            messagebox.showerror("错误", "端口必须是数字！")
+            messagebox.showerror("错误", "端口必须为数字！")
             return
 
         # Fetch proxy configs
@@ -576,23 +673,35 @@ class KindleFlyApp(ctk.CTk):
         try:
             proxy_port = int(proxy_port_str) if proxy_port_str else 7890
         except ValueError:
-            messagebox.showerror("错误", "代理端口必须是数字！")
+            messagebox.showerror("错误", "代理端口必须为数字！")
             return
 
-        test_dialog = ctk.CTkInputDialog(text="请稍候，正在与谷歌邮件服务器通信...", title="测试 SMTP 连接")
-        # Since ctk dialog is blocking, a thread is better.
-        # We can just show a progress visual or disable button and re-enable.
-        # Let's show a loading dialog: we will do this by spawning a thread and updating the user on success/fail.
+        # Disable test button and show loading state
+        self.btn_test.configure(state="disabled", text="⏳ 正在测试...")
+        
         def thread_target():
             sender = EmailSender(server, port, email, pwd, use_ssl,
                                  proxy_enabled, proxy_type, proxy_host, proxy_port)
             success, msg = sender.test_connection()
             
+            def on_done():
+                self.btn_test.configure(state="normal", text="测试连接")
+                if success:
+                    messagebox.showinfo("测试通过", msg)
+                else:
+                    # Provide rich suggestion help for the failure
+                    error_tips = ""
+                    if "qq.com" in server.lower():
+                        error_tips = "\n\n💡 QQ邮箱提示：请确保已在网页版QQ邮箱开启 POP3/SMTP 服务，并使用生成的 16 位发信授权码（非登录密码）！"
+                    elif "163.com" in server.lower():
+                        error_tips = "\n\n💡 网易163邮箱提示：请确保在网页版开启了 POP3/SMTP 服务，并使用专用发信授权密码！"
+                    elif "gmail.com" in server.lower():
+                        error_tips = "\n\n💡 Gmail提示：请确保开启了两步验证，并使用 16 位『应用专用密码』！国内连接谷歌可能超时，建议在『网络代理』栏启用 Clash 代理。"
+                    
+                    messagebox.showerror("连接失败", f"{msg}{error_tips}")
+            
             # Run UI modifications in main thread via after()
-            if success:
-                self.after(0, lambda: messagebox.showinfo("测试通过", msg))
-            else:
-                self.after(0, lambda: messagebox.showerror("连接失败", msg))
+            self.after(0, on_done)
 
         t = threading.Thread(target=thread_target, daemon=True)
         t.start()
