@@ -14,17 +14,17 @@ class EmailSender:
         self.smtp_password = smtp_password
         self.use_ssl = use_ssl
 
-    def _connect(self):
+    def _connect(self, timeout=120):
         """Helper to establish SMTP connection and authenticate."""
         if not self.smtp_server or not self.sender_email or not self.smtp_password:
             raise ValueError("发件配置不完整，请检查邮件SMTP设置！")
 
         if self.use_ssl:
             # SSL Connection (typically port 465)
-            server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=15)
+            server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=timeout)
         else:
             # TLS Connection (typically port 587)
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=15)
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=timeout)
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -36,7 +36,7 @@ class EmailSender:
         """Tests connection to the SMTP server. Returns (success, message)."""
         server = None
         try:
-            server = self._connect()
+            server = self._connect(timeout=15)
             return True, "连接并登录成功！您的SMTP邮箱设置是正确的。"
         except smtplib.SMTPAuthenticationError:
             return False, "登录失败！邮箱或密码/授权码(Auth Code)不正确。如果使用的是 Gmail 或 QQ 邮箱，必须使用专门生成的【应用专用密码/授权码】，而不是邮箱登录密码。"
@@ -106,8 +106,8 @@ class EmailSender:
             )
             msg.attach(attachment)
 
-            # Connect and send
-            server = self._connect()
+            # Connect and send (Using 180s timeout to allow large file transmission)
+            server = self._connect(timeout=180)
             server.sendmail(self.sender_email, [kindle_email], msg.as_string())
             
             return True, f"成功推送 '{file_name}' 至 Kindle!"
