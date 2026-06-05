@@ -20,7 +20,18 @@ DEFAULT_CONFIG = {
     "proxy_enabled": False,
     "proxy_type": "SOCKS5",  # SOCKS5 or HTTP
     "proxy_host": "127.0.0.1",
-    "proxy_port": 7890
+    "proxy_port": 7890,
+    
+    # Z-Library Configs
+    "zlib_email": "",
+    "zlib_password_obscured": "",
+    "zlib_remix_userid": "",
+    "zlib_remix_userkey": "",
+    "zlib_custom_domain": "",
+    "zlib_last_working_domain": "z-library.im",  # pre-seeded; updated after each successful resolution
+
+    # UI / App Configs
+    "app_theme": "dark",   # persisted here so it survives localStorage resets
 }
 
 class ConfigManager:
@@ -90,4 +101,25 @@ class ConfigManager:
         else:
             obscured = base64.b64encode(password.encode("utf-8")).decode("utf-8")
             self.config["smtp_password_obscured"] = obscured
+        self.save_config()
+
+    @property
+    def zlib_password(self):
+        """Decodes the Z-Library password from base64."""
+        obscured = self.config.get("zlib_password_obscured", "")
+        if not obscured:
+            return ""
+        try:
+            return base64.b64decode(obscured.encode("utf-8")).decode("utf-8")
+        except Exception:
+            return ""
+
+    @zlib_password.setter
+    def zlib_password(self, password):
+        """Encodes the Z-Library password in base64 and saves it."""
+        if not password:
+            self.config["zlib_password_obscured"] = ""
+        else:
+            obscured = base64.b64encode(password.encode("utf-8")).decode("utf-8")
+            self.config["zlib_password_obscured"] = obscured
         self.save_config()

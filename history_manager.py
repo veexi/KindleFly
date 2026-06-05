@@ -64,8 +64,8 @@ class HistoryManager:
         
         return file_hash in self.history
 
-    def mark_as_sent(self, file_path, file_hash=None):
-        """Marks a file as sent by saving its MD5 hash, filename, size, and sent timestamp."""
+    def mark_as_sent(self, file_path, file_hash=None, status="sent"):
+        """Marks a file as sent/downloaded by saving its MD5 hash, filename, size, status, and sent timestamp."""
         if not file_hash:
             file_hash = self.compute_md5(file_path)
             if not file_hash:
@@ -88,7 +88,8 @@ class HistoryManager:
             "file_name": file_name,
             "file_path": os.path.abspath(file_path),
             "file_size": file_size_str,
-            "sent_at": sent_time
+            "sent_at": sent_time,
+            "status": status
         }
         
         self.save_history()
