@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.kindlefly.KindleFly</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>KindleFly</name>
+  <summary>A beautiful, automated tool for syncing local ebooks to Kindle</summary>
+  <description>
+    <p>
+      KindleFly monitors local directories, automatically scans for new ebooks (epub, pdf, etc.),
+      computes their MD5 hash to prevent duplication, and securely emails them to your Kindle device.
+      It also integrates Z-Library for book searching and downloading.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.kindlefly.KindleFly.desktop</launchable>
+  <content_rating type="oars-1.5" />
+</component>

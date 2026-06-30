@@ -1,0 +1,30 @@
+app-id: com.kindlefly.KindleFly
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: kindlefly
+finish-args:
+  # Graphics/GUI window support
+  - --socket=wayland
+  - --socket=fallback-to-x11
+  - --share=ipc
+  - --device=dri
+  # Network access for SMTP mail and Z-Library API
+  - --share=network
+  # Read/write access to folders to scan and save configuration
+  - --filesystem=host
+  # Support for system tray icon status notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+modules:
+  - name: kindlefly
+    buildsystem: simple
+    build-commands:
+      # Copy the PyInstaller-compiled single executable
+      - install -D dist/main /app/bin/kindlefly
+      # Copy desktop entries, icons, and AppStream metadata
+      - install -D assets/app_icon.png /app/share/icons/hicolor/256x256/apps/com.kindlefly.KindleFly.png
+      - install -D com.kindlefly.KindleFly.desktop /app/share/applications/com.kindlefly.KindleFly.desktop
+      - install -D com.kindlefly.KindleFly.metainfo.xml /app/share/metainfo/com.kindlefly.KindleFly.metainfo.xml
+    sources:
+      - type: dir
+        path: .

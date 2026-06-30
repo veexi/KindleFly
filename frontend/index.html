@@ -5,6 +5,26 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KindleFly</title>
+    <script>
+      (function() {
+        try {
+          if (typeof window.localStorage === 'undefined' || !window.localStorage) {
+            var mockStorage = {};
+            window.localStorage = {
+              getItem: function(key) { return mockStorage[key] || null; },
+              setItem: function(key, value) { mockStorage[key] = String(value); },
+              removeItem: function(key) { delete mockStorage[key]; },
+              clear: function() { mockStorage = {}; },
+              length: 0,
+              key: function(i) { return Object.keys(mockStorage)[i] || null; }
+            };
+            console.log("[KindleFly] localStorage polyfilled successfully");
+          }
+        } catch (e) {
+          console.error("[KindleFly] Failed to polyfill localStorage:", e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

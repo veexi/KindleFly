@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=KindleFly
+Comment=一款高颜值、全自动的 Kindle 电子书本地推送工具
+Exec=kindlefly
+Icon=com.kindlefly.KindleFly
+Terminal=false
+Categories=Utility;

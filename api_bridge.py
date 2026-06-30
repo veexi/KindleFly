@@ -138,12 +138,20 @@ class ApiBridge:
         return {"success": True, "message": "已触发即时扫描"}
 
     def open_scan_folder(self):
-        """Opens target monitored folder in Windows Explorer."""
+        """Opens target monitored folder in native file manager."""
         folder = self.config_manager.get("scan_folder", "")
         if not folder or not os.path.exists(folder):
             return {"success": False, "message": "扫描目录不存在或尚未配置！"}
         try:
-            os.startfile(folder)
+            import platform
+            import subprocess
+            system = platform.system()
+            if system == "Windows":
+                os.startfile(folder)
+            elif system == "Darwin":
+                subprocess.run(["open", folder], check=True)
+            else: # Linux and others
+                subprocess.run(["xdg-open", folder], check=True)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": f"打开失败: {str(e)}"}
@@ -158,19 +166,34 @@ class ApiBridge:
             return {"success": False, "message": str(e)}
 
     def browse_folder(self):
-        """Opens a native Windows folder browser dialog and returns the selected path."""
+        """Opens a native folder browser dialog and returns the selected path."""
+        global window_ref
+        if not window_ref:
+            return ""
         try:
-            import tkinter as tk
-            from tkinter import filedialog
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True) # Bring folder picker to front
-            folder = filedialog.askdirectory(title="选择需要监控的文件夹")
-            root.destroy()
-            if folder:
-                return os.path.abspath(folder)
+            import webview
+            # pywebview's create_file_dialog returns a tuple of paths, or None if cancelled
+            result = window_ref.create_file_dialog(
+                dialog_type=webview.FOLDER_DIALOG,
+                directory=self.config_manager.get("scan_folder", "")
+            )
+            if result and len(result) > 0:
+                return os.path.abspath(result[0])
         except Exception as e:
-            print(f"Error selecting folder: {e}")
+            print(f"Error selecting folder via pywebview: {e}")
+            # Fallback to tkinter
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+                folder = filedialog.askdirectory(title="选择需要监控的文件夹")
+                root.destroy()
+                if folder:
+                    return os.path.abspath(folder)
+            except Exception as tk_err:
+                print(f"Fallback to tkinter also failed: {tk_err}")
         return ""
 
     # ----------------------------------------------------

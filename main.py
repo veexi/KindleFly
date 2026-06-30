@@ -1,6 +1,39 @@
 import os
 import sys
 import threading
+
+# Clean up PyInstaller GTK/GDK path overrides to force loading from host system paths
+if getattr(sys, 'frozen', False):
+    for env_var in ["GTK_EXE_PREFIX", "GTK_DATA_PREFIX", "GTK_PATH", "GDK_PIXBUF_MODULE_FILE", "GDK_PIXBUF_MODULEDIR"]:
+        if env_var in os.environ:
+            del os.environ[env_var]
+
+# Pre-load configuration to configure WebKit proxy before UI rendering engine starts
+try:
+    app_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    config_path = os.path.join(app_dir, "config.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            import json
+            cfg = json.load(f)
+            if cfg.get("proxy_enabled", False):
+                phost = cfg.get("proxy_host", "127.0.0.1")
+                pport = cfg.get("proxy_port", 7890)
+                ptype = cfg.get("proxy_type", "SOCKS5").lower()
+                purl = f"{ptype}://{phost}:{pport}"
+                if ptype == "socks5":
+                    purl = f"socks5h://{phost}:{pport}"
+                os.environ["http_proxy"] = purl
+                os.environ["https_proxy"] = purl
+                os.environ["all_proxy"] = purl
+                print(f"[KindleFly] Webview proxy environment set: {purl}")
+except Exception as e:
+    print(f"[KindleFly] Error pre-loading proxy config: {e}")
+
+# Disable WebKit2GTK process sandbox on Linux to prevent GPU rendering lag and crashes
+os.environ["WEBKIT_FORCE_SANDBOX"] = "0"
+os.environ["WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS"] = "1"
+
 import webview
 from PIL import Image
 
